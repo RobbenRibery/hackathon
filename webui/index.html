@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Negotiation Agent WebUI</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        /* WhatsApp-like scrollbar */
+        .messages-container::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .messages-container::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        .messages-container::-webkit-scrollbar-thumb {
+            background: rgba(0,0,0,0.2);
+            border-radius: 3px;
+        }
+        
+        .messages-container::-webkit-scrollbar-thumb:hover {
+            background: rgba(0,0,0,0.3);
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .tab {
+            padding: 12px 24px;
+            background: rgba(255,255,255,0.2);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .tab:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .tab.active {
+            background: white;
+            color: #667eea;
+        }
+        
+        .panel {
+            display: none;
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        
+        .panel.active {
+            display: block;
+        }
+        
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        label {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+        
+        input[type="number"],
+        input[type="text"],
+        select,
+        textarea {
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        textarea {
+            min-height: 150px;
+            resize: vertical;
+            font-family: monospace;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 8px;
+        }
+        
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        button {
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .messages-container {
+            max-height: 600px;
+            overflow-y: auto;
+            padding: 20px;
+            margin-top: 20px;
+            background: #ece5dd;
+            background-image: 
+                repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,.03) 10px, rgba(0,0,0,.03) 20px);
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .message {
+            display: flex;
+            margin-bottom: 8px;
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .message.buyer {
+            justify-content: flex-end;
+        }
+        
+        .message.seller {
+            justify-content: flex-start;
+        }
+        
+        .message-bubble {
+            max-width: 70%;
+            padding: 8px 12px;
+            border-radius: 7.5px;
+            position: relative;
+            word-wrap: break-word;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+        
+        .message.buyer .message-bubble {
+            background: #dcf8c6;
+            border-bottom-right-radius: 2px;
+        }
+        
+        .message.seller .message-bubble {
+            background: white;
+            border-bottom-left-radius: 2px;
+        }
+        
+        .message-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #667eea;
+        }
+        
+        .message-content {
+            color: #303030;
+            font-size: 14px;
+            line-height: 1.4;
+            margin-bottom: 4px;
+        }
+        
+        .message-price {
+            color: #25d366;
+            font-weight: 600;
+            font-size: 13px;
+            margin-top: 4px;
+            padding-top: 4px;
+            border-top: 1px solid rgba(0,0,0,0.1);
+        }
+        
+        .message-type {
+            font-size: 11px;
+            color: #999;
+            margin-top: 4px;
+            font-style: italic;
+        }
+        
+        .message-time {
+            font-size: 11px;
+            color: #999;
+            text-align: right;
+            margin-top: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 4px;
+        }
+        
+        .message.buyer .message-time {
+            justify-content: flex-end;
+        }
+        
+        .message.seller .message-time {
+            justify-content: flex-start;
+        }
+        
+        .message-time::before {
+            content: '✓';
+            color: #999;
+        }
+        
+        .message.buyer .message-time::before {
+            content: '✓✓';
+            color: #34b7f1;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        
+        .status-active {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+        
+        .status-completed {
+            background: #bee3f8;
+            color: #2c5282;
+        }
+        
+        .status-aborted {
+            background: #fed7d7;
+            color: #742a2a;
+        }
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            background: #48bb78;
+            color: white;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            display: none;
+            z-index: 1000;
+        }
+        
+        .notification.error {
+            background: #f56565;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 Negotiation Agent WebUI</h1>
+        
+        <div class="tabs">
+            <button class="tab active" onclick="showPanel('config')">⚙️ Configuration</button>
+            <button class="tab" onclick="showPanel('negotiation')">💬 Negotiation</button>
+        </div>
+        
+        <!-- Configuration Panel -->
+        <div id="config-panel" class="panel active">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <!-- Buyer Config -->
+                <div>
+                    <h2>👤 Buyer Configuration</h2>
+                    <form id="buyer-form">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Aggression (0-5)</label>
+                                <input type="number" id="buyer-aggression" min="0" max="5" step="1">
+                            </div>
+                            <div class="form-group">
+                                <label>Max Rounds (1-10)</label>
+                                <input type="number" id="buyer-maxRounds" min="1" max="10" step="1">
+                            </div>
+                            <div class="form-group">
+                                <label>Price Margin % (0-30)</label>
+                                <input type="number" id="buyer-priceMarginPct" min="0" max="30" step="0.1">
+                            </div>
+                            <div class="form-group">
+                                <label>Response Delay (ms)</label>
+                                <input type="number" id="buyer-responseDelayMs" min="0" max="5000" step="100">
+                            </div>
+                            <div class="form-group">
+                                <label>Use LLM</label>
+                                <select id="buyer-useLLM">
+                                    <option value="true">Yes</option>
+                                    <option value="false">No</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Log Chat</label>
+                                <select id="buyer-logChat">
+                                    <option value="true">Yes</option>
+                                    <option value="false">No</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Allowed Payment Methods</label>
+                            <div class="checkbox-group">
+                                <div class="checkbox-item">
+                                    <input type="checkbox" id="buyer-payment-stripe" value="stripe">
+                                    <label for="buyer-payment-stripe">Stripe</label>
+                                </div>
+                                <div class="checkbox-item">
+                                    <input type="checkbox" id="buyer-payment-paypal" value="paypal">
+                                    <label for="buyer-payment-paypal">PayPal</label>
+                                </div>
+                                <div class="checkbox-item">
+                                    <input type="checkbox" id="buyer-payment-cash" value="cash">
+                                    <label for="buyer-payment-cash">Cash</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>System Prompt Content</label>
+                            <textarea id="buyer-content" placeholder="Enter system prompt for buyer agent..."></textarea>
+                        </div>
+                        <div class="button-group">
+                            <button type="button" onclick="saveBuyerConfig()">💾 Save Buyer Config</button>
+                            <button type="button" onclick="loadBuyerConfig()">🔄 Load Buyer Config</button>
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- Seller Config -->
+                <div>
+                    <h2>🏪 Seller Configuration</h2>
+                    <form id="seller-form">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Aggression (0-5)</label>
+                                <input type="number" id="seller-aggression" min="0" max="5" step="1">
+                            </div>
+                            <div class="form-group">
+                                <label>Max Rounds (1-10)</label>
+                                <input type="number" id="seller-maxRounds" min="1" max="10" step="1">
+                            </div>
+                            <div class="form-group">
+                                <label>Price Margin % (0-30)</label>
+                                <input type="number" id="seller-priceMarginPct" min="0" max="30" step="0.1">
+                            </div>
+                            <div class="form-group">
+                                <label>Response Delay (ms)</label>
+                                <input type="number" id="seller-responseDelayMs" min="0" max="5000" step="100">
+                            </div>
+                            <div class="form-group">
+                                <label>Use LLM</label>
+                                <select id="seller-useLLM">
+                                    <option value="true">Yes</option>
+                                    <option value="false">No</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Log Chat</label>
+                                <select id="seller-logChat">
+                                    <option value="true">Yes</option>
+                                    <option value="false">No</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Allowed Payment Methods</label>
+                            <div class="checkbox-group">
+                                <div class="checkbox-item">
+                                    <input type="checkbox" id="seller-payment-stripe" value="stripe">
+                                    <label for="seller-payment-stripe">Stripe</label>
+                                </div>
+                                <div class="checkbox-item">
+                                    <input type="checkbox" id="seller-payment-paypal" value="paypal">
+                                    <label for="seller-payment-paypal">PayPal</label>
+                                </div>
+                                <div class="checkbox-item">
+                                    <input type="checkbox" id="seller-payment-cash" value="cash">
+                                    <label for="seller-payment-cash">Cash</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>System Prompt Content</label>
+                            <textarea id="seller-content" placeholder="Enter system prompt for seller agent..."></textarea>
+                        </div>
+                        <div class="button-group">
+                            <button type="button" onclick="saveSellerConfig()">💾 Save Seller Config</button>
+                            <button type="button" onclick="loadSellerConfig()">🔄 Load Seller Config</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Negotiation Panel -->
+        <div id="negotiation-panel" class="panel">
+            <h2>💬 Negotiation Chat</h2>
+            <div style="margin-bottom: 20px;">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Product Title</label>
+                        <input type="text" id="product-title" value="Vintage Camera" placeholder="Enter product name">
+                    </div>
+                    <div class="form-group">
+                        <label>Listed Price ($)</label>
+                        <input type="number" id="listed-price" value="250" min="0" step="0.01">
+                    </div>
+                </div>
+                <div class="button-group">
+                    <button onclick="startNegotiation()">🚀 Start Negotiation</button>
+                </div>
+            </div>
+            
+            <div id="negotiation-status" style="display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding: 15px; background: #f0f0f0; border-radius: 8px;">
+                    <div>
+                        <h3 style="margin: 0; display: inline;">Negotiation Status</h3>
+                        <span style="margin-left: 10px; color: #666;">Round: <strong id="round-number">0</strong></span>
+                    </div>
+                    <span id="status-badge" class="status-badge status-active">Active</span>
+                </div>
+                <div class="messages-container" id="messages-container"></div>
+                <div style="margin-top: 15px; padding: 15px; background: #f0f0f0; border-radius: 8px;">
+                    <div class="button-group" style="justify-content: center;">
+                        <button onclick="runRound()" id="run-round-btn" style="padding: 15px 30px; font-size: 18px;">▶️ Run Next Round</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="notification" class="notification"></div>
+    
+    <script>
+        const API_BASE = 'http://localhost:8000/api';
+        let currentNegotiationId = null;
+        
+        function showPanel(panelName) {
+            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            
+            if (panelName === 'config') {
+                document.getElementById('config-panel').classList.add('active');
+                document.querySelectorAll('.tab')[0].classList.add('active');
+            } else {
+                document.getElementById('negotiation-panel').classList.add('active');
+                document.querySelectorAll('.tab')[1].classList.add('active');
+            }
+        }
+        
+        function showNotification(message, isError = false) {
+            const notif = document.getElementById('notification');
+            notif.textContent = message;
+            notif.className = `notification ${isError ? 'error' : ''}`;
+            notif.style.display = 'block';
+            setTimeout(() => {
+                notif.style.display = 'none';
+            }, 3000);
+        }
+        
+        async function loadBuyerConfig() {
+            try {
+                const response = await fetch(`${API_BASE}/buyer`);
+                const config = await response.json();
+                
+                document.getElementById('buyer-aggression').value = config.aggression;
+                document.getElementById('buyer-maxRounds').value = config.maxRounds;
+                document.getElementById('buyer-priceMarginPct').value = config.priceMarginPct;
+                document.getElementById('buyer-responseDelayMs').value = config.responseDelayMs;
+                document.getElementById('buyer-useLLM').value = config.useLLM.toString();
+                document.getElementById('buyer-logChat').value = config.logChat.toString();
+                document.getElementById('buyer-content').value = config.content;
+                
+                ['stripe', 'paypal', 'cash'].forEach(method => {
+                    document.getElementById(`buyer-payment-${method}`).checked = 
+                        config.allowedPaymentMethods.includes(method);
+                });
+                
+                showNotification('Buyer config loaded');
+            } catch (error) {
+                showNotification('Error loading buyer config: ' + error.message, true);
+            }
+        }
+        
+        async function saveBuyerConfig() {
+            try {
+                const paymentMethods = ['stripe', 'paypal', 'cash'].filter(
+                    method => document.getElementById(`buyer-payment-${method}`).checked
+                );
+                
+                const config = {
+                    aggression: parseInt(document.getElementById('buyer-aggression').value),
+                    maxRounds: parseInt(document.getElementById('buyer-maxRounds').value),
+                    priceMarginPct: parseFloat(document.getElementById('buyer-priceMarginPct').value),
+                    responseDelayMs: parseInt(document.getElementById('buyer-responseDelayMs').value),
+                    useLLM: document.getElementById('buyer-useLLM').value === 'true',
+                    logChat: document.getElementById('buyer-logChat').value === 'true',
+                    allowedPaymentMethods: paymentMethods,
+                    content: document.getElementById('buyer-content').value
+                };
+                
+                const response = await fetch(`${API_BASE}/buyer`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+                
+                if (!response.ok) throw new Error('Failed to save');
+                
+                showNotification('Buyer config saved');
+            } catch (error) {
+                showNotification('Error saving buyer config: ' + error.message, true);
+            }
+        }
+        
+        async function loadSellerConfig() {
+            try {
+                const response = await fetch(`${API_BASE}/seller`);
+                const config = await response.json();
+                
+                document.getElementById('seller-aggression').value = config.aggression;
+                document.getElementById('seller-maxRounds').value = config.maxRounds;
+                document.getElementById('seller-priceMarginPct').value = config.priceMarginPct;
+                document.getElementById('seller-responseDelayMs').value = config.responseDelayMs;
+                document.getElementById('seller-useLLM').value = config.useLLM.toString();
+                document.getElementById('seller-logChat').value = config.logChat.toString();
+                document.getElementById('seller-content').value = config.content;
+                
+                ['stripe', 'paypal', 'cash'].forEach(method => {
+                    document.getElementById(`seller-payment-${method}`).checked = 
+                        config.allowedPaymentMethods.includes(method);
+                });
+                
+                showNotification('Seller config loaded');
+            } catch (error) {
+                showNotification('Error loading seller config: ' + error.message, true);
+            }
+        }
+        
+        async function saveSellerConfig() {
+            try {
+                const paymentMethods = ['stripe', 'paypal', 'cash'].filter(
+                    method => document.getElementById(`seller-payment-${method}`).checked
+                );
+                
+                const config = {
+                    aggression: parseInt(document.getElementById('seller-aggression').value),
+                    maxRounds: parseInt(document.getElementById('seller-maxRounds').value),
+                    priceMarginPct: parseFloat(document.getElementById('seller-priceMarginPct').value),
+                    responseDelayMs: parseInt(document.getElementById('seller-responseDelayMs').value),
+                    useLLM: document.getElementById('seller-useLLM').value === 'true',
+                    logChat: document.getElementById('seller-logChat').value === 'true',
+                    allowedPaymentMethods: paymentMethods,
+                    content: document.getElementById('seller-content').value
+                };
+                
+                const response = await fetch(`${API_BASE}/seller`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+                
+                if (!response.ok) throw new Error('Failed to save');
+                
+                showNotification('Seller config saved');
+            } catch (error) {
+                showNotification('Error saving seller config: ' + error.message, true);
+            }
+        }
+        
+        async function startNegotiation() {
+            try {
+                const productTitle = document.getElementById('product-title').value;
+                const listedPrice = parseFloat(document.getElementById('listed-price').value);
+                
+                const response = await fetch(`${API_BASE}/negotiation/start`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ product_title: productTitle, listed_price: listedPrice })
+                });
+                
+                if (!response.ok) throw new Error('Failed to start negotiation');
+                
+                const result = await response.json();
+                currentNegotiationId = result.negotiation_id;
+                
+                document.getElementById('negotiation-status').style.display = 'block';
+                document.getElementById('round-number').textContent = '0';
+                document.getElementById('status-badge').textContent = 'Active';
+                document.getElementById('status-badge').className = 'status-badge status-active';
+                
+                displayMessages(result.messages);
+                showNotification('Negotiation started');
+            } catch (error) {
+                showNotification('Error starting negotiation: ' + error.message, true);
+            }
+        }
+        
+        async function runRound() {
+            if (!currentNegotiationId) {
+                showNotification('No active negotiation', true);
+                return;
+            }
+            
+            const btn = document.getElementById('run-round-btn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Processing...';
+            
+            let result = null;
+            try {
+                console.log('Running round for negotiation:', currentNegotiationId);
+                const response = await fetch(`${API_BASE}/negotiation/round`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ negotiation_id: currentNegotiationId })
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ detail: response.statusText }));
+                    throw new Error(errorData.detail || errorData.error || `HTTP ${response.status}: Failed to run round`);
+                }
+                
+                result = await response.json();
+                console.log('Round result:', result);
+                
+                if (!result.messages || result.messages.length === 0) {
+                    console.warn('No messages in result');
+                }
+                
+                document.getElementById('round-number').textContent = result.round_number || 0;
+                
+                if (result.status === 'completed') {
+                    document.getElementById('status-badge').textContent = 'Completed';
+                    document.getElementById('status-badge').className = 'status-badge status-completed';
+                    btn.disabled = true;
+                    showNotification('✅ Negotiation completed!');
+                } else if (result.status === 'aborted') {
+                    document.getElementById('status-badge').textContent = 'Aborted';
+                    document.getElementById('status-badge').className = 'status-badge status-aborted';
+                    btn.disabled = true;
+                    showNotification('❌ Negotiation aborted');
+                } else {
+                    showNotification('Round completed');
+                }
+                
+                if (result.messages) {
+                    displayMessages(result.messages);
+                }
+            } catch (error) {
+                console.error('Error running round:', error);
+                showNotification('Error running round: ' + error.message, true);
+            } finally {
+                if (result && result.status === 'active') {
+                    btn.disabled = false;
+                    btn.textContent = '▶️ Run Next Round';
+                } else if (!result || result.status !== 'active') {
+                    btn.disabled = false;
+                    btn.textContent = '▶️ Run Next Round';
+                }
+            }
+        }
+        
+        function displayMessages(messages) {
+            const container = document.getElementById('messages-container');
+            container.innerHTML = messages.map(msg => {
+                const isBuyer = msg.role === 'buyer';
+                const timestamp = new Date(msg.timestamp);
+                const timeStr = timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const content = msg.content || msg.reasoning || '';
+                
+                return `
+                <div class="message ${msg.role}">
+                    <div class="message-bubble">
+                        <div class="message-header">
+                            <span>${isBuyer ? '👤 Buyer' : '🏪 Seller'}</span>
+                        </div>
+                        <div class="message-content">${escapeHtml(content)}</div>
+                        ${msg.price ? `<div class="message-price">💰 Price: $${msg.price.toFixed(2)}</div>` : ''}
+                        <div class="message-type">${msg.type}</div>
+                        <div class="message-time">${timeStr}</div>
+                    </div>
+                </div>
+            `;
+            }).join('');
+            container.scrollTop = container.scrollHeight;
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // Load configs on page load
+        window.addEventListener('load', () => {
+            loadBuyerConfig();
+            loadSellerConfig();
+        });
+    </script>
+</body>
+</html>
+

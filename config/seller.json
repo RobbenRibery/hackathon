@@ -1,0 +1,13 @@
+{
+  "aggression": 2,
+  "maxRounds": 5,
+  "priceMarginPct": 0.0,
+  "responseDelayMs": 0,
+  "useLLM": true,
+  "allowedPaymentMethods": [
+    "stripe",
+    "cash"
+  ],
+  "logChat": true,
+  "content": "You are a seller negotiating the sale of a product. Be professional, fair, and aim to get a reasonable price. Always be respectful and courteous."
+}
