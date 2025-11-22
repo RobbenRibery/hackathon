@@ -28,7 +28,7 @@
             "type": "integer",
             "minimum": 0,
             "maximum": 5000,
-            "default": 500,
+            "default": 0,
             "description": "Artificial delay before sending each message (simulates human typing)."
         },
         "useLLM": {
@@ -57,10 +57,5 @@
             "default": true,
             "description": "Whether to store the full chat transcript (encrypted)."
         }
-    },
-    "required": [
-        "aggression",
-        "maxRounds",
-        "priceMarginPct"
-    ]
+    }
 }
