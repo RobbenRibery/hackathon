@@ -13,6 +13,18 @@ class AgentCard(BaseModel):
     payment_methods: List[str] = Field(default_factory=list)
     context_window_limit: int = 128000
 
+class NegotiationSettings(BaseModel):
+    aggression: int = Field(default=2, ge=0, le=5, description="How forceful the agent should be. 0 = very friendly, 5 = hard-bargainer.")
+    max_rounds: int = Field(default=5, ge=1, le=10, alias="maxRounds", description="Maximum number of back-and-forth counter-offers before aborting.")
+    price_margin_pct: float = Field(default=10, ge=0, le=30, alias="priceMarginPct", description="Maximum percentage below the listed price the buyer is willing to propose as the first offer.")
+    response_delay_ms: int = Field(default=500, ge=0, le=5000, alias="responseDelayMs", description="Artificial delay before sending each message (simulates human typing).")
+    use_llm: bool = Field(default=True, alias="useLLM", description="If false, fall back to rule-based templates only.")
+    allowed_payment_methods: List[str] = Field(default_factory=lambda: ["stripe", "cash"], alias="allowedPaymentMethods", description="Payment options the buyer is willing to accept.")
+    log_chat: bool = Field(default=True, alias="logChat", description="Whether to store the full chat transcript (encrypted).")
+
+    class Config:
+        populate_by_name = True
+
 class MessagePayload(BaseModel):
     topic: Optional[str] = None
     terms: Optional[Dict[str, Any]] = None
