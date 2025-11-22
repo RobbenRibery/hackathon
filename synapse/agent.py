@@ -38,7 +38,15 @@ class NegotiationAgent:
     ):
         self.card = AgentCard(id=id, name=name, capabilities=["negotiation"])
         self.router = router
-        self.system_prompt = system_prompt
+        
+        # Extract programmatic controls from config
+        self.max_rounds = config.get("maxRounds", 10)
+        self.response_delay_ms = config.get("responseDelayMs", 0)
+        
+        # Format settings into the system prompt
+        settings_str = "\n".join([f"{k}: {v}" for k, v in config.items() if k not in ["id", "name", "system_prompt", "model_name"]])
+        
+        self.system_prompt = f"{system_prompt}\n\nNegotiation Settings:\n{settings_str}"
         self.model_name = model_name
         self.history: List[Message] = []
         
@@ -52,10 +60,10 @@ class NegotiationAgent:
             self.ai_agent = PydanticAgent(
                 model_name,
                 output_type=AgentResponse,
-                system_prompt=f"You are an autonomous agent named {name}.\nYour Goal: {system_prompt}"
+                system_prompt=f"You are an autonomous agent named {name}.\nYour Goal: {self.system_prompt}"
             )
         else:
-            logger.warning(f"[{name}] pydantic_ai not available. Using mock logic.")
+            logger.warning(f"[{name}] pydantic_ai not available.")
 
     async def receive(self, message: Message):
         """
@@ -78,21 +86,29 @@ class NegotiationAgent:
         if message.type == "INFO":
             logger.info(f"[{self.card.name}] Acknowledged info.")
             return
+            
+        # Check max rounds (assuming 2 messages per round: one from each side)
+        if len(self.history) > self.max_rounds * 2:
+            logger.info(f"[{self.card.name}] Max rounds ({self.max_rounds}) reached. Stopping negotiation.")
+            return
 
         # Process the message
         await self.think_and_reply(message)
 
     async def think_and_reply(self, incoming_message: Message):
         """
-        Analyzes the incoming message and generates a response using LLM or Mock logic.
+        Analyzes the incoming message and generates a response using LLM.
         """
+        if self.response_delay_ms > 0:
+            await asyncio.sleep(self.response_delay_ms / 1000.0)
+
         if self.ai_agent:
             # Construct prompt with conversation context
             prompt = self._construct_prompt(incoming_message)
             
             # Run the agent (this call invokes the LLM)
             result = await self.ai_agent.run(prompt)
-            response_data = result.data
+            response_data = result.response
             
             # Create the response message
             reply = Message(
@@ -107,8 +123,7 @@ class NegotiationAgent:
             self.history.append(reply)
             await self.router.send(reply)
         else:
-            # Fallback for when pydantic_ai is not available or initialized
-            await self._send_mock_response(incoming_message)
+            logger.warning(f"[{self.card.name}] No AI agent available. Ignoring message.")
 
     def _construct_prompt(self, incoming_message: Message) -> str:
         """
@@ -125,46 +140,6 @@ class NegotiationAgent:
         
         Decide on the next strategic move. Respond with the appropriate action type and payload.
         """
-
-    async def _send_mock_response(self, incoming_message: Message):
-        """
-        Simple rule-based logic for testing without an LLM.
-        """
-        response_data = self._mock_logic()
-        
-        # If mock logic returns None (shouldn't happen with current logic but good for safety)
-        if not response_data:
-            return
-
-        reply = Message(
-            from_agent=self.card.id,
-            to_agent=incoming_message.from_agent,
-            thread_id=incoming_message.thread_id,
-            type=response_data["type"],
-            payload=MessagePayload(**response_data["payload"]),
-            reasoning=response_data["reasoning"]
-        )
-        
-        logger.info(f"[{self.card.name}] Sending mock response: {reply.type}")
-        self.history.append(reply)
-        await self.router.send(reply)
-
-    def _mock_logic(self) -> Dict[str, Any]:
-        last_msg = self.history[-1]
-        if last_msg.type == "PROPOSAL":
-            return {
-                "type": "REJECTION",
-                "reasoning": "Mock Agent: Price too high.",
-                "payload": {"counter_offer": {"price": 90}}
-            }
-        elif last_msg.type == "REJECTION":
-             return {
-                "type": "ACCEPTANCE",
-                "reasoning": "Mock Agent: Agreed.",
-                "payload": {"final_terms": {"price": 90}}
-            }
-        # Default fallback
-        return {"type": "INFO", "reasoning": "I am listening.", "payload": {}}
 
     def _format_history(self) -> str:
         """Formats the last few messages for context window efficiency."""
