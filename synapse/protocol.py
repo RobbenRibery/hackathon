@@ -25,23 +25,14 @@ class NegotiationSettings(BaseModel):
     class Config:
         populate_by_name = True
 
-class MessagePayload(BaseModel):
-    topic: Optional[str] = None
-    terms: Optional[Dict[str, Any]] = None
-    counter_offer: Optional[Dict[str, Any]] = None
-    final_terms: Optional[Dict[str, Any]] = None
-    digital_signature: Optional[str] = None
-    content: Optional[str] = None # Generic content
+class AgentMessage(BaseModel):
+    message: str = Field(description="The message to send to the other agent to achieve the intent of the current agent.")
+    price: float = Field(description="The preferred price of the current agent.")
 
 class Message(BaseModel):
     id: str = Field(default_factory=generate_id)
     thread_id: str = Field(default_factory=generate_id)
-    from_agent: str = Field(alias="from")
-    to_agent: str = Field(alias="to")
+    from_agent: str
+    to_agent: str 
     timestamp: datetime = Field(default_factory=datetime.utcnow)
-    type: Literal["PROPOSAL", "REJECTION", "ACCEPTANCE", "COMMITMENT", "INFO"]
-    payload: MessagePayload
-    reasoning: str
-
-    class Config:
-        populate_by_name = True
+    message: AgentMessage

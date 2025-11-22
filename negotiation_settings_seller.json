@@ -57,10 +57,5 @@
             "default": true,
             "description": "Whether to store the full chat transcript (encrypted)."
         }
-    },
-    "required": [
-        "aggression",
-        "maxRounds",
-        "priceMarginPct"
-    ]
+    }
 }

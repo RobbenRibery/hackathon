@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from typing import List, Dict, Any, Optional, Literal
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from .protocol import Message, MessagePayload, AgentCard
 from .router import Router
 
@@ -18,9 +18,7 @@ except ImportError:
 
 class AgentResponse(BaseModel):
     """Structured response expected from the LLM Agent."""
-    type: Literal["PROPOSAL", "REJECTION", "ACCEPTANCE", "COMMITMENT", "INFO"]
-    reasoning: str
-    payload: MessagePayload
+    message:str = Field(description="The message to send to the other agent.")
 
 class NegotiationAgent:
     """
@@ -108,7 +106,7 @@ class NegotiationAgent:
             
             # Run the agent (this call invokes the LLM)
             result = await self.ai_agent.run(prompt)
-            response_data = result.response
+            response_data = result.output
             
             # Create the response message
             reply = Message(

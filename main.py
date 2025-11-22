@@ -1,13 +1,10 @@
 import asyncio
 import logging
 import json
-import os
-from dotenv import load_dotenv
 from synapse.router import Router
 from synapse.agent import NegotiationAgent
-
-# Load environment variables
-load_dotenv(override=True)
+from pydantic import BaseModel, Field
+from textwrap import dedent
 
 # Configure logging
 logging.basicConfig(
@@ -32,7 +29,16 @@ def load_settings(filepath: str) -> dict:
         logging.error(f"Failed to load settings: {e}")
         return {}
 
-async def main(sell_agent_config: dict, buy_agent_config: dict, initial_offer: dict):
+class Output(BaseModel):
+    messages:list[dict] = Field(description="Messages exchanged between the agents.")
+    prices:list[dict] = Field(description="Prices exchanged between the agents.")
+    justification:str = Field(description="Justification for the prices exchanged between the agents.")
+
+    @property
+    def final_price(self) -> float:
+        return self.prices[-1]["price"]
+
+async def main(sell_agent_config: dict, buy_agent_config: dict, initial_offer: dict) -> dict:
     print("=== Synapse Protocol: Negotiation Demo ===\n")
     
     # Create the router (message bus)
@@ -44,6 +50,9 @@ async def main(sell_agent_config: dict, buy_agent_config: dict, initial_offer: d
     
     print(f"✓ Created agents: {seller.card.name} and {buyer.card.name}")
     print(f"✓ Registered agents: {router.list_agents()}\n")
+
+    if input("Do you want to start the negotiation? (y/n)") != "y":
+        exit()
     
     print(">>> Starting Negotiation...\n")
     await seller.start_conversation("buyer_agent", initial_offer)
@@ -55,22 +64,15 @@ async def main(sell_agent_config: dict, buy_agent_config: dict, initial_offer: d
     print("\n=== Negotiation Complete ===")
     print(f"Total messages exchanged: {len(seller.history) + len(buyer.history)}")
 
+
 if __name__ == "__main__":
+    
     # Use gpt-4o-mini for both agents
     model_name = "openai:gpt-4o-mini"
     
     # Load settings
-    settings = load_settings("negotiation_settings.json")
-    
-    # Create configurations
-    # "Create another one exactly the same for the seller" - using same settings
-    seller_config = {
-        "id": "seller_agent",
-        "name": "Seller",
-        "system_prompt": "You are a seller of a vintage Leica M3 camera. You want to sell it for at least $1800. You are tough but fair.",
-        "model_name": model_name,
-        **settings # Squash settings into config
-    }
+    seller_settings = load_settings("negotiation_settings_seller.json")
+    buyer_settings = load_settings("negotiation_settings_buyer.json")
     
     buyer_config = {
         "id": "buyer_agent",
